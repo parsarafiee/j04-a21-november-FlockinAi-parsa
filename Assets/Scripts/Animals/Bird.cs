@@ -12,7 +12,7 @@ public class Bird : MonoBehaviour
     Vector2 velocity;
 
 
-    public float alignmentAree;
+    public float alignmentArea;
      Collider2D[] orientationArea;
 
     [Header("CohesionInfo")]
@@ -50,18 +50,19 @@ public class Bird : MonoBehaviour
         {
             transform.position = new Vector3(transform.position.x, 10f, 0);
         }
+        orientationArea = Physics2D.OverlapCircleAll(transform.position, alignmentArea);
         
         attractionnArea = Physics2D.OverlapCircleAll(transform.position, cohesionArea);
+
         repulsionArea = Physics2D.OverlapCircleAll(transform.position, seprationArea);
-        orientationArea = Physics2D.OverlapCircleAll(transform.position, alignmentAree);
 
 
-        if (attractionnArea.Length >= 1)
+        if (attractionnArea.Length >= 2)
         {
             ReGroup();
         }
 
-        if (repulsionArea.Length >= 1)
+        if (repulsionArea.Length >= 2)
         {
             Repulsion();
         }
@@ -90,7 +91,7 @@ public class Bird : MonoBehaviour
         {
             center += attractionnArea[i].gameObject.transform.position;
         }
-        rb.AddForce( cohesionForce * ((center / attractionnArea.Length) - transform.position).normalized);
+        velocity = ( cohesionForce * ((center / attractionnArea.Length) - transform.position).normalized);
         if (orientationArea.Length>=1)
         {
             GetTheVlocity();
