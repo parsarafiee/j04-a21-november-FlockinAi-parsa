@@ -7,20 +7,35 @@ public class MOve : MonoBehaviour
 {
     Rigidbody2D m_Rigidbody2;
 
-    public float cohesionArea = 10;
-    Collider2D[] attractionnArea;
+    public float MaxSpeed;
+    public float MaxAcceleration;
+
+    public float maxArea;
+
+    public float cohesionAreaRed = 10;
+    Collider2D[] allBirds;
 
     Vector3 target;
     public Vector3 initialVlocity;
 
+    float dir;
+    public float alignmentAreaRed = 5;
 
-    public float alignmentArea = 5;
-    Collider2D[] orientationArea;
+    public float seperationAreaRed = 1;
+
+
+    List<GameObject> attractionArea;
+    List<GameObject> alignmentArea;
+    List<GameObject> seperationArea;
 
     float timer;
     // Start is called before the first frame update
     void Start()
     {
+        attractionArea = new List<GameObject>();
+        alignmentArea = new List<GameObject>();
+        seperationArea = new List<GameObject>();
+
         m_Rigidbody2 = gameObject.GetComponent<Rigidbody2D>();
         m_Rigidbody2.velocity = initialVlocity;
 
@@ -50,59 +65,128 @@ public class MOve : MonoBehaviour
         {
             transform.position = new Vector3(transform.position.x, 10f, 0);
         }
-        attractionnArea = Physics2D.OverlapCircleAll(transform.position, cohesionArea);
-        orientationArea = Physics2D.OverlapCircleAll(transform.position, alignmentArea);
-        // set the destination
-        if (attractionnArea.Length>=1)
+        allBirds = Physics2D.OverlapCircleAll(transform.position, maxArea);
+        PutInCorrectList();
+
+        if (attractionArea.Count >0)
         {
-            GetDestination();
+            target = GetDestination(attractionArea);
+            if (target != Vector3.zero)
+            {
+                Vector2 targetSpeed = (target - this.transform.position).normalized * MaxSpeed;
+                m_Rigidbody2.AddForce((targetSpeed - m_Rigidbody2.velocity).normalized * Time.deltaTime * MaxAcceleration, ForceMode2D.Impulse);
+            }
+        }
+        
+
+        if (seperationArea.Count > 0)
+        {
+            Vector3 seprationForceDIrection=Vector3.zero;
+            for (int i = 0; i < seperationArea.Count; i++)
+            {
+                Vector2 targetSpeed = (this.transform.position - seperationArea[i].gameObject.transform.position ).normalized * MaxSpeed;
+                m_Rigidbody2.AddForce((targetSpeed - m_Rigidbody2.velocity).normalized * Time.deltaTime * MaxAcceleration, ForceMode2D.Impulse);
+            }
         }
 
 
-        if (orientationArea.Length>=1)
+        Vector2 newVelo = SetOrientation(alignmentArea);
+        m_Rigidbody2.AddForce(newVelo.normalized * Time.deltaTime * MaxAcceleration, ForceMode2D.Impulse);
+        
+
+
+        //else if (Vector3.Distance(target, this.transform.position) > 1 && Vector3.Distance(target, this.transform.position) <= 5)
+        //{
+        //    Vector2 vloc = SetOrientation();
+
+        //    m_Rigidbody2.velocity = vloc;
+
+        //    float angle = Mathf.Atan2(vloc.y, vloc.x) * Mathf.Rad2Deg;
+        //    transform.rotation = Quaternion.AngleAxis(angle, Vector3.forward);
+        //}
+        //else
+        //{ 
+        //    Vector2 targetSpeed = (target - this.transform.position).normalized * MaxSpeed;
+        //    m_Rigidbody2.AddForce((targetSpeed - m_Rigidbody2.velocity).normalized * Time.deltaTime * MaxAcceleration, ForceMode2D.Impulse);
+
+
+        //    float angle = Mathf.Atan2(targetSpeed.y, targetSpeed.x) * Mathf.Rad2Deg;
+        //    transform.rotation = Quaternion.AngleAxis(angle, Vector3.forward);
+
+        //}
+
+
+
+        float angle1 = Mathf.Atan2(m_Rigidbody2.velocity.y, m_Rigidbody2.velocity.x) * Mathf.Rad2Deg;
+        transform.rotation = Quaternion.AngleAxis(angle1, Vector3.forward);
+
+    }
+    Vector3 GetDestination(List<GameObject> list)
+    {
+        Vector3 pos = Vector3.zero;
+        int number = 0;
+
+        if (list.Count > 0)
         {
-            SetOrientation();
+            for (int i = 0; i < list.Count; i++)
+            {
+                number++;
+                pos += list[i].gameObject.transform.position;
+            }
+            return pos / number;
+
         }
-
-        float angle = Mathf.Atan2(m_Rigidbody2.velocity.y, m_Rigidbody2.velocity.x) * Mathf.Rad2Deg;
-
-        transform.rotation = Quaternion.AngleAxis(angle, Vector3.forward);
-
+        return pos;
 
     }
 
-    private void SetOrientation()
+    void PutInCorrectList()
+    {
+        attractionArea.Clear();
+        alignmentArea.Clear();
+        seperationArea.Clear();
+        for (int i = 0; i < allBirds.Length; i++)
+        {
+            if (allBirds[i].gameObject)
+            {
+                float distance = Vector3.Distance(this.transform.position, allBirds[i].gameObject.transform.position);
+
+                if (distance <= seperationAreaRed)
+                {
+                    seperationArea.Add(allBirds[i].gameObject);
+                }
+                else if (
+                    distance <= alignmentAreaRed)
+                {
+                    alignmentArea.Add(allBirds[i].gameObject);
+                }
+                else if (distance <= cohesionAreaRed)
+                {
+                    attractionArea.Add(allBirds[i].gameObject);
+                }
+
+            }
+
+        }
+
+    }
+    private Vector2 SetOrientation(List<GameObject> list)
     {
         Vector2 vlo = Vector2.zero;
-        for (int i = 0; i < orientationArea.Length; i++)
+        if (list.Count > 0)
         {
-            vlo += orientationArea[i].GetComponent<Rigidbody2D>().velocity;
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (list[i].gameObject != this.gameObject)
+                {
+
+                    vlo += list[i].GetComponent<Rigidbody2D>().velocity;
+                }
+            }
+
+            return vlo / list.Count;
         }
-        m_Rigidbody2.velocity = vlo / orientationArea.Length;
+        return m_Rigidbody2.velocity;
 
     }
-
-    void GetDestination()
-    {
-        Vector3 pos =Vector3.zero;
-        for (int i = 0; i < attractionnArea.Length; i++)
-        {
-            pos += attractionnArea[i].transform.position;
-            Debug.Log(attractionnArea[i].name);
-        }
-                target = pos/ attractionnArea.Length;
-        if (Vector3.Distance(this.transform.position, target) > alignmentArea)
-        {
-            Vector3 desireVector = (target - transform.position);
-            Vector3 birdVlocity = (m_Rigidbody2.velocity);
-
-
-            m_Rigidbody2.velocity = Vector2.Lerp(birdVlocity, desireVector, timer / 10);
-
-        }
-        else
-            timer = 0;
-    }
-
-
 }
