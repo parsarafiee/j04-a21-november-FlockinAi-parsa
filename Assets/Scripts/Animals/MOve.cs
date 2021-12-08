@@ -3,11 +3,17 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Collections;
-
+using UnityEngine.UI;
 
 public class MOve : MonoBehaviour
 {
     Rigidbody2D m_Rigidbody2;
+
+    public float xBorder;
+    public float yBorder;  
+
+    public Slider  alignmentWeight;
+
 
     public float MaxSpeed;
     public float MaxAcceleration;
@@ -30,6 +36,8 @@ public class MOve : MonoBehaviour
     List<GameObject> seperationArea;
 
     float timer;
+
+
     // Start is called before the first frame update
     void Start()
     {
@@ -47,53 +55,56 @@ public class MOve : MonoBehaviour
     }
 
     // Update is called once per frame
-    void FixedUpdate()
+    void Update()
     {
         timer += Time.deltaTime;
-        if (this.transform.position.x > 18f)
+        if (this.transform.position.x > xBorder)
         {
-            transform.position = new Vector3(-18f, transform.position.y, 0);
+            transform.position = new Vector3(-xBorder, transform.position.y, 0);
         }
-        if (this.transform.position.x < -18f)
+        if (this.transform.position.x < -xBorder)
         {
-            transform.position = new Vector3(18f, transform.position.y, 0);
+            transform.position = new Vector3(xBorder, transform.position.y, 0);
         }
-        if (this.transform.position.y > 10f)
+        if (this.transform.position.y > yBorder)
         {
-            transform.position = new Vector3(transform.position.x, -10f, 0);
+            transform.position = new Vector3(transform.position.x, -yBorder, 0);
         }
-        if (this.transform.position.y < -10f)
+        if (this.transform.position.y < -yBorder)
         {
-            transform.position = new Vector3(transform.position.x, 10f, 0);
+            transform.position = new Vector3(transform.position.x, yBorder, 0);
         }
         allBirds = Physics2D.OverlapCircleAll(transform.position, cohesionAreaRed);
         PutInCorrectList();
 
+
+
+    }
+
+    void FixedUpdate()
+    {
+        Vector2 sum=Vector2.zero;
         if (attractionArea.Count > 0)
         {
             target = GetDestination(attractionArea);
             Vector2 targetSpeed = (target - this.transform.position).normalized * MaxSpeed;
-            m_Rigidbody2.AddForce((targetSpeed - m_Rigidbody2.velocity).normalized * Time.deltaTime * MaxAcceleration, ForceMode2D.Impulse);
+            sum+= ((targetSpeed - m_Rigidbody2.velocity).normalized * Time.deltaTime * MaxAcceleration);
         }
 
 
-        else if (seperationArea.Count > 0)
+        if (seperationArea.Count > 0)
         {
-            Vector3 seprationForceDIrection = Vector3.zero;
-            for (int i = 0; i < seperationArea.Count; i++)
-            {
-                seprationForceDIrection += (this.transform.position - seperationArea[i].gameObject.transform.position);
-            }
-            seprationForceDIrection = (seprationForceDIrection / seperationArea.Count).normalized * MaxSpeed;
-            m_Rigidbody2.AddForce(((Vector2)seprationForceDIrection - m_Rigidbody2.velocity).normalized * Time.deltaTime * MaxAcceleration, ForceMode2D.Impulse);
+
+            sum += (Vector2)SeprationForce();
         }
 
-        else if (alignmentArea.Count > 0)
+        if (alignmentArea.Count > 0)
         {
             Vector2 newVelo = SetOrientation(alignmentArea);
-            m_Rigidbody2.AddForce(((newVelo.normalized)* MaxSpeed - m_Rigidbody2.velocity).normalized * Time.deltaTime * MaxAcceleration, ForceMode2D.Impulse);
+            sum +=(((newVelo.normalized) * MaxSpeed - m_Rigidbody2.velocity).normalized * Time.deltaTime * MaxAcceleration);
         }
 
+        m_Rigidbody2.AddForce(sum, ForceMode2D.Impulse);
         float angle1 = Mathf.Atan2(m_Rigidbody2.velocity.y, m_Rigidbody2.velocity.x) * Mathf.Rad2Deg;
         transform.rotation = Quaternion.AngleAxis(angle1, Vector3.forward);
 
@@ -103,6 +114,17 @@ public class MOve : MonoBehaviour
     //    Gizmos.color = Color.red;
     //    Gizmos.DrawWireSphere(transform.position, cohesionAreaRed);
     //}
+
+    Vector3 SeprationForce()
+    {
+        Vector3 seprationForceDIrection = Vector3.zero;
+        for (int i = 0; i < seperationArea.Count; i++)
+        {
+            seprationForceDIrection += (this.transform.position - seperationArea[i].gameObject.transform.position) / Vector3.Distance(this.transform.position, seperationArea[i].gameObject.transform.position);
+        }
+        seprationForceDIrection = (seprationForceDIrection / seperationArea.Count).normalized * MaxSpeed;
+        return (((Vector2)seprationForceDIrection - m_Rigidbody2.velocity).normalized * Time.deltaTime * MaxAcceleration); ;
+    }
 
     Vector3 GetDestination(List<GameObject> list)
     {
@@ -120,7 +142,6 @@ public class MOve : MonoBehaviour
 
         }
         return pos;
-
     }
 
     void PutInCorrectList()
